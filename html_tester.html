@@ -1,0 +1,62 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<!-- Quick 'n' easy HTML rendering, pop HTML output in this form
+     to parse it. -->
+<head>
+  <title>XHTML Tester</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+  <style media="screen" type="text/css">
+  body {
+    font-family: sans-serif;
+    font-size: 1.1em;
+  }
+
+  input[type="button"], input[type="reset"] {
+    width: 150px;
+    padding: 10px;
+  }
+
+  #html_in {
+    width: 100%;
+  }
+
+  .centre {
+    text-align: center;
+  }
+  </style>
+
+  <script type="text/javascript">
+  function setContent(){
+    var content = document.getElementById("html_in").value;
+    document.getElementById("html_content").innerHTML = content;
+  }
+
+  function clean(sub) {
+    var content = document.getElementById("html_in").value;
+    clean_content = content.replace(sub, "");
+    document.getElementById("html_in").value = clean_content;
+  }
+  </script>
+</head>
+<body>
+  <div>
+    <form action="">
+      <div class="centre">
+        <input type="button" onclick="setContent()" value="Test!" />
+        <input type="button" onclick="clean(/\\n/g)" value="Clean \n" />
+        <input type="reset" value="Clear" />
+      </div>
+      <div>
+        <textarea id="html_in" rows="15" cols="150" ></textarea>
+      </div>
+    </form>
+    <hr />
+    <div id="html_content">
+    <p style="text-align:center;">Type above to try HTML content.</p>
+    </div>
+    <hr />
+    <p class="centre">- page end -</p>
+  </div>
+</body>
+</html>
