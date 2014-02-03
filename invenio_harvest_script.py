@@ -82,7 +82,7 @@ def get_contents(url):
 def get_many_records(domain, recids):
     """ Given a list of record IDs, attempts to download records from
     a remote server, reformed to avoid using Etree """
-    xml_col = '<?xml version="1.0" encoding="UTF-8"?>\n<collection>\n'
+    xml_col = '<?xml version="1.0" encoding="UTF-8"?>\n<collection xmlns="http://www.loc.gov/MARC21/slim">\n'
     regex = re.compile('<record.*?>.*?</record>', re.DOTALL)
     for idx, _id in enumerate(recids, 1):
         rec_id = str(_id)
