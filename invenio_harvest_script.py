@@ -1,24 +1,19 @@
 """
-Harvests docs from an Inspire instance; 
+Harvests docs from an Inspire instance;
 Graham R. Armstrong, July 2013
 """
 
+import re
 import sys
 import argparse
 from json import loads
 from time import sleep
 from urllib import urlencode, urlopen
 from argparse import ArgumentParser
-from xml.etree import ElementTree
+#from xml.etree import ElementTree
 
 # ARGUMENTS
 CONF = {}
-
-FILE_NAME = 'Landolt-Boernstein'
-FILE_DIR = ''  # Defaults to /tmp
-SEARCH_TERM = u'962__b:1593302'
-FIELDS = u''
-DOMAIN = u'cds.cern.ch'
 
 # CONSTANTS
 MAX_ATTEMPTS = 5
@@ -39,7 +34,7 @@ def compile_url(search_term_raw, of='xm', fields=None):
     f = {'ln': 'en', 'of': of, 'action_search': 'Search',
          'p': search_term_raw, 'f': fields}
     p = urlencode(f)
-    uri = 'http://%s/search?%s' % (DOMAIN, p)
+    uri = '%s/search?%s' % (CONF['url'], p)
     return uri
 
 
@@ -60,13 +55,35 @@ def get_contents(url):
     print "ERROR: Could not get contents of URL: %s" % url
 
 
+# Legacy
+# def get_many_records(domain, recids):
+#     """ Given a list of record IDs, attempts to download records from
+#     a remote server, creates an ElementTree and parses to string on exit """
+#     collection = ElementTree.Element('collection')
+#     collection.text = '\n'
+#     for idx, _id in enumerate(recids, 1):
+#         rec_id = str(_id)
+#         print "%d) Getting record #%s" % (idx, rec_id)
+#         url = "%s/record/%s/export/xm" % (domain, rec_id)
+#         handle = urlopen(url)
+#         xml_out = handle.read()
+#         handle.close()
+#         try:
+#             xml_tree = ElementTree.XML(xml_out)
+#             clear_namespace(xml_tree)
+#         except ElementTree.ParseError as exc:
+#             print "Error! record #%s" % (rec_id,), exc
+#             print xml_out
+#             continue
+#         collection.extend(xml_tree.getchildren())
+#     return ElementTree.tostring(collection)
+
+
 def get_many_records(domain, recids):
     """ Given a list of record IDs, attempts to download records from
-    a remote server, creates an ElementTree and parses to string on exit """
-    collection = ElementTree.Element('collection')
-    collection.text = '\n'
-    if domain[:7] != 'http://':
-        domain = 'http://' + domain
+    a remote server, reformed to avoid using Etree """
+    xml_col = '<?xml version="1.0" encoding="UTF-8"?>\n<collection>\n'
+    regex = re.compile('<record.*?>.*?</record>', re.DOTALL)
     for idx, _id in enumerate(recids, 1):
         rec_id = str(_id)
         print "%d) Getting record #%s" % (idx, rec_id)
@@ -74,15 +91,10 @@ def get_many_records(domain, recids):
         handle = urlopen(url)
         xml_out = handle.read()
         handle.close()
-        try:
-            xml_tree = ElementTree.XML(xml_out)
-            clear_namespace(xml_tree)
-        except ElementTree.ParseError as exc:
-            print "Error! record #%s" % (rec_id,), exc
-            print xml_out
-            continue
-        collection.extend(xml_tree.getchildren())
-    return ElementTree.tostring(collection)
+        for xmlrec in regex.findall(xml_out):
+            xml_col += xmlrec + '\n'
+    xml_col += '</collection>\n'
+    return xml_col
 
 
 def search_for_ids():
@@ -102,7 +114,7 @@ records as MARCXML to a directed .xml file."""
     parser = ArgumentParser(description=desc, epilog=epilog)
     parser.add_argument('remote_server', help="Remote Invenio instance to download records from")
     parser.add_argument('-p', '--search-terms', help="Search terms to use while searching for records.")
-    parser.add_argument('-f', '--fields', help="Fields to search in (e.g. title)")
+    parser.add_argument('-f', '--fields', help="Fields to search in (e.g. title)", default='')
     parser.add_argument('-i', '--ids', help="A comma seperated list of record IDs to fetch (CSVs)")
     parser.add_argument('output_file', help="The file to output to.")
     arghs = vars(parser.parse_args())
@@ -117,28 +129,25 @@ records as MARCXML to a directed .xml file."""
     else:
         raise ArgumentsProvidedError("ERROR: Neither search terms nor record IDs have been specified for harvest.")
 
-    CONF['url'] = arghs['remote_server']
+    if arghs['remote_server'].startswith('http://'):
+        CONF['url'] = arghs['remote_server']
+    else:
+        CONF['url'] = "http://" + arghs['remote_server']
     CONF['output'] = arghs['output_file']
 
     if 'ids' in CONF:
         print "Getting records from IDs"
-        records = get_many_records(CONF['url'], CONF['ids'])
+        content = get_many_records(CONF['url'], CONF['ids'])
     else:
         record_ids = search_for_ids()
         print "Getting %d records..." % (len(record_ids),)
         if len(record_ids) > 10:
-            records = get_many_records(CONF['url'], record_ids)
+            content = get_many_records(CONF['url'], record_ids)
         else:
-            url = urlencode(compile_url(CONF['search_terms'],
-                                        fields=CONF['fields']))
+            url = compile_url(CONF['search_terms'], fields=CONF['fields'])
             ham_handle = urlopen(url)
             content = ham_handle.read()
             ham_handle.close()
-
-    try:
-        content = '<?xml version="1.0" encoding="UTF-8"?>\n' + records
-    except NameError:
-        pass
 
     path = CONF['output']
     print "Writing results to %s" % (path,)
