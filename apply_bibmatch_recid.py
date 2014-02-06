@@ -103,8 +103,7 @@ See the internal variable TAG_LIST for details of how fields are treated."""  %
     new_records = []
     for record, possible_matches in record_pairings:
         if AUTO_APPEND and len(possible_matches) == 1:
-            print("Only one recid, automatically appending recid: %s" %
-                  (possible_matches[0][1],))
+            print("Only one recid, automatically appending...")
         else:
             print "\nOriginal Record"
             print_essentials(record, TAG_LIST)
@@ -247,12 +246,12 @@ def format_field_vals(vals):
     return string_vals
 
 
-def ask_question(ids):
+def ask_question(rec_urls):
     """ Ask user """
     recognised_ids = {}
     options = 'Possible options:'
-    for code, record_url in zip(generate_alpha_code(len(ids)), ids):
-        recid = record_url.split('/record/')[1]
+    for code, record_url in zip(generate_alpha_code(len(rec_urls)), rec_urls):
+        recid = record_url.split('/record/')[-1]
         recognised_ids[code] = recid
         options += " %s: %s  " % (code, record_url)
     print options
@@ -297,7 +296,7 @@ def add_record_fields(record, possible_matches):
     """ Appends the inputted values to the records. If provided a
     record id, appends that, else asks for user input """
     if AUTO_APPEND and len(possible_matches) == 1:
-        new_recid = possible_matches[0][1]
+        new_recid = possible_matches[0].split('/')[-1]
     else:
         new_recid = ask_question(possible_matches)
 
