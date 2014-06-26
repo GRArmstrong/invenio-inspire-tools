@@ -1,4 +1,4 @@
-
+#!/usr/bin/python
 """
 Utility to massage records from BibMatch
 
@@ -13,15 +13,16 @@ from invenio.legacy.bibrecord import (create_records,
                                       record_get_field_instances,
                                       field_get_subfield_instances,
                                       record_add_field,
-                                      record_xml_output)
+                                      record_xml_output,
+                                      record_delete_fields)
 
 
 MARCXML_HEADER = """<?xml version="1.0" encoding="UTF-8"?>
 <collection xmlns="http://www.loc.gov/MARC21/slim">"""
 MARCXML_FOOTER = "</collection>"
 
-XML_COMMENT_START = "<!-- Result type: "
-XML_COMMENT_END = "-->"
+MARCXML_RECORD_COMMENT = re.compile(r"(<!--.*?-->)\s*<record>",
+                                    re.MULTILINE | re.DOTALL)
 
 BIBMATCH_MATCHED = "<!-- BibMatch-Matching-Mode: exact-matched -->"
 
@@ -45,15 +46,34 @@ def rule_create_fft(header, record):
 
 
 def rule_add_recid(header, record):
-    if not BIBMATCH_MATCHED in header:
-        return record
+    # if not BIBMATCH_MATCHED in header:
+    #     return record
     recids = REGEX_BIBMATCH_RESULTS.findall(header)
     if len(recids) == 1:
         record_add_field(record, '001', controlfield_value=recids[0])
     return record
 
 
-ACTIVE_RULES = [rule_add_recid, rule_create_fft]
+def rule_change_conf_num(header, record):
+    substitutes = {
+        "C78-09-18xxx": "C78-09-18.2"
+    }
+    for field in record_get_field_instances(record, '773'):
+        for idx, (code, value) in enumerate(field[0]):
+            if code == 'w' and value in substitutes.keys():
+                field[0][idx] = ('w', substitutes[value])
+    return record
+
+
+def rule_filter_out_fields(header, record):
+    interesting_fields = ['001', '695', '773', '856', 'FFT']
+    for tag in record.keys():
+        if tag not in interesting_fields:
+            record_delete_fields(record, tag)
+    return record
+
+
+ACTIVE_RULES = [rule_add_recid, rule_change_conf_num, rule_filter_out_fields]
 
 
 # ==================| HELPERS |=======================
@@ -119,13 +139,7 @@ def _print(msg):
 
 
 def get_bibmatch_headers(marcxml):
-    blocks = ["%s%s" % (XML_COMMENT_START, block) for block in
-              marcxml.split(XML_COMMENT_START)[1:]]
-
-    comments = ["%s%s" % split.rpartition(XML_COMMENT_END)[:-1]
-                for split in blocks]
-
-    return comments
+    return MARCXML_RECORD_COMMENT.findall(marcxml)
 
 
 def get_records():

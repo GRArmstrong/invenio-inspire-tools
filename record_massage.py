@@ -1,4 +1,4 @@
-
+#!/usr/bin/python
 """
 Utility to massage MARCXML records
 
