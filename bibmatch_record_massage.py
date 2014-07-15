@@ -27,7 +27,7 @@ MARCXML_RECORD_COMMENT = re.compile(r"(<!--.*?-->)\s*<record>",
 BIBMATCH_MATCHED = "<!-- BibMatch-Matching-Mode: exact-matched -->"
 
 REGEX_BIBMATCH_RESULTS = re.compile(
-    r"<!-- BibMatch-Matching-Found: http[s]{0,1}:\/\/.*\/record\/([0-9]*)")
+    r"<!-- BibMatch-Matching-Found:\s*https?:\/\/.*\/record\/([0-9]*)")
 
 
 # ===================| RULES |========================
@@ -48,6 +48,10 @@ def rule_create_fft(header, record):
 def rule_add_recid(header, record):
     # if not BIBMATCH_MATCHED in header:
     #     return record
+    if '001' in record.keys():
+        recid = str(record['001'][0][3])
+        _print("Record already has recid %s" % (recid,))
+        return record
     recids = REGEX_BIBMATCH_RESULTS.findall(header)
     if len(recids) == 1:
         record_add_field(record, '001', controlfield_value=recids[0])
@@ -73,7 +77,7 @@ def rule_filter_out_fields(header, record):
     return record
 
 
-ACTIVE_RULES = [rule_add_recid, rule_change_conf_num, rule_filter_out_fields]
+ACTIVE_RULES = [rule_add_recid, rule_filter_out_fields]
 
 
 # ==================| HELPERS |=======================
